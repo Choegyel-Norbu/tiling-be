@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Booking Notification</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background-color: #2563eb;
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+            margin: -30px -30px 20px -30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+        }
+        .booking-ref {
+            background-color: #f0f9ff;
+            border-left: 4px solid #2563eb;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .booking-ref span {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f9fafb;
+            border-radius: 4px;
+        }
+        .section h3 {
+            margin-top: 0;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+        .details table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .details td {
+            padding: 8px 0;
+            vertical-align: top;
+        }
+        .details td:first-child {
+            font-weight: bold;
+            width: 35%;
+            color: #666;
+        }
+        .status-pending {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 4px;
+            background-color: #fef3c7;
+            color: #92400e;
+            font-weight: bold;
+        }
+        .action-needed {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 4px;
+            padding: 15px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .action-needed p {
+            color: #dc2626;
+            font-weight: bold;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔔 New Booking Received</h1>
+        </div>
+
+        <div class="action-needed">
+            <p>⚡ Action Required: Please review and respond to this booking</p>
+        </div>
+
+        <div class="booking-ref">
+            <p style="margin: 0; color: #666; font-size: 14px;">Booking Reference</p>
+            <span th:text="${bookingRef}">TR-12345</span>
+            <span class="status-pending" th:text="${status}">pending</span>
+        </div>
+
+        <div class="section">
+            <h3>👤 Customer Information</h3>
+            <div class="details">
+                <table>
+                    <tr>
+                        <td>Name</td>
+                        <td th:text="${booking.user.displayName}">John Doe</td>
+                    </tr>
+                    <tr>
+                        <td>Email</td>
+                        <td><a th:href="'mailto:' + ${booking.user.email}" th:text="${booking.user.email}">john@example.com</a></td>
+                    </tr>
+                    <tr>
+                        <td>Phone</td>
+                        <td><a th:href="'tel:' + ${customerPhone}" th:text="${customerPhone}">0400 000 000</a></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>📋 Job Details</h3>
+            <div class="details">
+                <table>
+                    <tr>
+                        <td>Service</td>
+                        <td th:text="${serviceId}">Roof Tiling</td>
+                    </tr>
+                    <tr>
+                        <td>Job Size</td>
+                        <td th:text="${jobSize}">Medium</td>
+                    </tr>
+                    <tr>
+                        <td>Preferred Date</td>
+                        <td th:text="${#temporals.format(preferredDate, 'EEEE, dd MMMM yyyy')}">Friday, 15 March 2024</td>
+                    </tr>
+                    <tr>
+                        <td>Time Slot</td>
+                        <td th:text="${timeSlot}">Morning</td>
+                    </tr>
+                    <tr>
+                        <td>Location</td>
+                        <td><span th:text="${suburb}">Sydney</span>, <span th:text="${postcode}">2000</span></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="section" th:if="${description != null and !description.isEmpty()}">
+            <h3>📝 Job Description</h3>
+            <p th:text="${description}">Customer's description of the job...</p>
+        </div>
+
+        <p style="text-align: center; color: #666; font-size: 14px; margin-top: 30px;">
+            Log in to the admin panel to manage this booking.
+        </p>
+    </div>
+</body>
+</html>
+

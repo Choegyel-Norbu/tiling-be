@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Status Update</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #2563eb;
+            margin: 0;
+            font-size: 24px;
+        }
+        .booking-ref {
+            background-color: #f0f9ff;
+            border: 1px solid #2563eb;
+            border-radius: 4px;
+            padding: 15px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .booking-ref span {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .status-update {
+            text-align: center;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .status-confirmed {
+            background-color: #d1fae5;
+            border: 1px solid #10b981;
+        }
+        .status-in_progress {
+            background-color: #dbeafe;
+            border: 1px solid #3b82f6;
+        }
+        .status-completed {
+            background-color: #d1fae5;
+            border: 1px solid #059669;
+        }
+        .status-cancelled {
+            background-color: #fee2e2;
+            border: 1px solid #ef4444;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 16px;
+        }
+        .badge-confirmed {
+            background-color: #10b981;
+            color: white;
+        }
+        .badge-in_progress {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .badge-completed {
+            background-color: #059669;
+            color: white;
+        }
+        .badge-cancelled {
+            background-color: #ef4444;
+            color: white;
+        }
+        .details {
+            margin: 20px 0;
+        }
+        .details table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .details td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .details td:first-child {
+            font-weight: bold;
+            width: 40%;
+            color: #666;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Tiling Roofing Services</h1>
+            <p>Booking Status Update</p>
+        </div>
+
+        <p>Dear <span th:text="${booking.user.displayName}">Customer</span>,</p>
+        
+        <p>We're writing to inform you that the status of your booking has been updated.</p>
+
+        <div class="booking-ref">
+            <p style="margin: 0; color: #666;">Booking Reference</p>
+            <span th:text="${bookingRef}">TR-12345</span>
+        </div>
+
+        <div class="status-update" 
+             th:classappend="'status-' + ${status}">
+            <p style="margin: 0 0 10px 0; color: #666;">New Status</p>
+            <span class="status-badge" 
+                  th:classappend="'badge-' + ${status}"
+                  th:text="${status}">confirmed</span>
+        </div>
+
+        <!-- Status-specific messages -->
+        <div th:if="${status == 'confirmed'}">
+            <h3>✅ Your Booking is Confirmed!</h3>
+            <p>Great news! Your booking has been confirmed. Our team will arrive at your location on the scheduled date.</p>
+        </div>
+
+        <div th:if="${status == 'in_progress'}">
+            <h3>🔧 Work In Progress</h3>
+            <p>Our team is currently working on your job. We'll notify you once the work is completed.</p>
+        </div>
+
+        <div th:if="${status == 'completed'}">
+            <h3>🎉 Job Completed!</h3>
+            <p>We're pleased to inform you that the work has been completed. Thank you for choosing Tiling Roofing Services!</p>
+            <p>We'd love to hear your feedback. Please let us know how we did.</p>
+        </div>
+
+        <div th:if="${status == 'cancelled'}">
+            <h3>❌ Booking Cancelled</h3>
+            <p>Your booking has been cancelled. If you have any questions or would like to reschedule, please contact us.</p>
+        </div>
+
+        <div class="details">
+            <h3>Booking Details</h3>
+            <table>
+                <tr>
+                    <td>Service</td>
+                    <td th:text="${serviceId}">Roof Tiling</td>
+                </tr>
+                <tr>
+                    <td>Scheduled Date</td>
+                    <td th:text="${#temporals.format(preferredDate, 'dd MMMM yyyy')}">15 March 2024</td>
+                </tr>
+                <tr>
+                    <td>Time Slot</td>
+                    <td th:text="${timeSlot}">Morning</td>
+                </tr>
+                <tr>
+                    <td>Location</td>
+                    <td><span th:text="${suburb}">Sydney</span>, <span th:text="${postcode}">2000</span></td>
+                </tr>
+            </table>
+        </div>
+
+        <p>If you have any questions, please don't hesitate to contact us.</p>
+
+        <div class="footer">
+            <p>Tiling Roofing Services<br>
+            Phone: 1300 XXX XXX<br>
+            Email: info@tilingroofing.com.au</p>
+            <p style="font-size: 12px;">This is an automated email. Please do not reply directly to this message.</p>
+        </div>
+    </div>
+</body>
+</html>
+

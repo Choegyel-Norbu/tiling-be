@@ -1,0 +1,9 @@
+{
+  "name": "uploadthing-scripts",
+  "version": "1.0.0",
+  "description": "UploadThing scripts for file operations",
+  "dependencies": {
+    "uploadthing": "^7.7.4"
+  }
+}
+
