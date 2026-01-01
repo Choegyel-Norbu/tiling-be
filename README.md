@@ -68,9 +68,13 @@ A Spring Boot 3.x RESTful API for managing service bookings, file uploads, and a
 2. **Set environment variables** (optional - defaults are in properties file)
    ```bash
    export SPRING_PROFILES_ACTIVE=prod
-   export DATABASE_URL=jdbc:mysql://localhost:3306/tiling
-   export DATABASE_USERNAME=root
-   export DATABASE_PASSWORD=ChogyalWp
+   # Railway MySQL environment variables
+   export MYSQLHOST=localhost
+   export MYSQLPORT=3306
+   export MYSQLUSER=root
+   export MYSQLPASSWORD=ChogyalWp
+   export MYSQLDATABASE=tiling
+   # Mail configuration
    export MAIL_HOST=smtp.gmail.com
    export MAIL_PORT=587
    export MAIL_USERNAME=your_email@gmail.com
@@ -218,9 +222,11 @@ All configuration can be customized via environment variables:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `SERVER_PORT` | Application port | 8082 |
-| `DATABASE_URL` | Database JDBC URL | jdbc:mysql://localhost:3306/tiling |
-| `DATABASE_USERNAME` | Database username | root |
-| `DATABASE_PASSWORD` | Database password | ChogyalWp |
+| `MYSQLHOST` | MySQL hostname | localhost |
+| `MYSQLPORT` | MySQL port | 3306 |
+| `MYSQLUSER` | MySQL username | root |
+| `MYSQLPASSWORD` | MySQL password | ChogyalWp |
+| `MYSQLDATABASE` | MySQL database name | tiling |
 | `MAIL_HOST` | SMTP server host | smtp.gmail.com |
 | `MAIL_PORT` | SMTP server port | 587 |
 | `MAIL_USERNAME` | SMTP username | (required) |
