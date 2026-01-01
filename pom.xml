@@ -205,5 +205,16 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Production profile for Railway deployment -->
+        <profile>
+            <id>production</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <!-- No special configuration needed - uses application-prod.properties via SPRING_PROFILES_ACTIVE -->
+        </profile>
+    </profiles>
 </project>
 
