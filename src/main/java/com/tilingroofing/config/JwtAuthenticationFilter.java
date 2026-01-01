@@ -43,27 +43,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String token = extractTokenFromRequest(request);
 
-            if (token != null && jwtTokenProvider.validateToken(token)) {
-                // Extract user info from token
-                String userId = jwtTokenProvider.getUserIdFromToken(token);
-                String email = jwtTokenProvider.getEmailFromToken(token);
+            if (token != null) {
+                if (jwtTokenProvider.validateToken(token)) {
+                    // Extract user info from token
+                    String userId = jwtTokenProvider.getUserIdFromToken(token);
+                    String email = jwtTokenProvider.getEmailFromToken(token);
 
-                if (userId != null && email != null) {
-                    // Create authentication object
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            userId, // Principal (user ID as String)
-                            null, // Credentials (not needed)
-                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
-                    );
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    if (userId != null && email != null) {
+                        // Create authentication object
+                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                userId, // Principal (user ID as String)
+                                null, // Credentials (not needed)
+                                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                        );
+                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                    // Set authentication in SecurityContext
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                    log.debug("Set authentication for user: {}", email);
+                        // Set authentication in SecurityContext
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                        log.debug("Set authentication for user: {}", email);
+                    } else {
+                        log.warn("Token validation passed but could not extract user info. UserId: {}, Email: {}", 
+                                userId, email);
+                    }
+                } else {
+                    log.debug("Token validation failed for request: {}", request.getRequestURI());
                 }
+            } else {
+                log.debug("No token found in request: {}", request.getRequestURI());
             }
         } catch (Exception e) {
-            log.error("Cannot set user authentication: {}", e.getMessage());
+            log.error("Cannot set user authentication for request {}: {}", 
+                    request.getRequestURI(), e.getMessage(), e);
             // Continue filter chain - let SecurityConfig handle unauthorized requests
         }
 

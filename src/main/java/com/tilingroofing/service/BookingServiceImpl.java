@@ -20,6 +20,7 @@ import com.tilingroofing.domain.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -48,6 +49,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingMapper bookingMapper;
     private final FileStorageService fileStorageService;
     private final EmailService emailService;
+    private final NotificationService notificationService;
     private final String bookingRefPrefix;
 
     public BookingServiceImpl(
@@ -57,6 +59,7 @@ public class BookingServiceImpl implements BookingService {
             BookingMapper bookingMapper,
             FileStorageService fileStorageService,
             EmailService emailService,
+            @Lazy NotificationService notificationService,
             @Value("${app.booking.ref-prefix:TR}") String bookingRefPrefix
     ) {
         this.bookingRepository = bookingRepository;
@@ -65,6 +68,7 @@ public class BookingServiceImpl implements BookingService {
         this.bookingMapper = bookingMapper;
         this.fileStorageService = fileStorageService;
         this.emailService = emailService;
+        this.notificationService = notificationService;
         this.bookingRefPrefix = bookingRefPrefix;
     }
 
@@ -113,6 +117,12 @@ public class BookingServiceImpl implements BookingService {
 
         // Block the booking date to prevent double bookings
         blockBookingDate(preferredDate, booking);
+
+        // Create notification for the new booking
+        String customerName = user.getName() != null ? user.getName() : user.getEmail();
+        String notificationMessage = String.format("You have a new booking: %s - %s, %s", 
+                bookingRef, customerName, preferredDate);
+        notificationService.createNotification(booking.getId(), notificationMessage);
 
         // Send email notifications (async)
         emailService.sendCustomerConfirmation(booking);
@@ -427,12 +437,20 @@ public class BookingServiceImpl implements BookingService {
 
     /**
      * Validates status transition is allowed.
+     * 
+     * Allowed transitions:
+     * - PENDING -> CONFIRMED, CANCELLED
+     * - CONFIRMED -> IN_PROGRESS, COMPLETED, CANCELLED
+     * - IN_PROGRESS -> COMPLETED, CANCELLED
+     * - COMPLETED, CANCELLED -> no transitions allowed (terminal states)
      */
     private void validateStatusTransition(BookingStatus from, BookingStatus to) {
         // Define valid transitions
         boolean validTransition = switch (from) {
             case PENDING -> to == BookingStatus.CONFIRMED || to == BookingStatus.CANCELLED;
-            case CONFIRMED -> to == BookingStatus.IN_PROGRESS || to == BookingStatus.CANCELLED;
+            case CONFIRMED -> to == BookingStatus.IN_PROGRESS || 
+                             to == BookingStatus.COMPLETED || 
+                             to == BookingStatus.CANCELLED;
             case IN_PROGRESS -> to == BookingStatus.COMPLETED || to == BookingStatus.CANCELLED;
             case COMPLETED, CANCELLED -> false;
         };

@@ -84,6 +84,13 @@ public class Booking {
     @OneToOne(mappedBy = "booking", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Rating rating;
 
+    /**
+     * One-to-one relationship with Notification.
+     * Each booking has exactly one notification.
+     */
+    @OneToOne(mappedBy = "booking", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Notification notification;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

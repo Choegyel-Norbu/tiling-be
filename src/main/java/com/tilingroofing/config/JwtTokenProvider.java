@@ -3,6 +3,8 @@ package com.tilingroofing.config;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +22,8 @@ import java.util.function.Function;
 @Component
 public class JwtTokenProvider {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtTokenProvider.class);
+
     private final SecretKey secretKey;
     private final long jwtExpiration;
 
@@ -36,6 +40,9 @@ public class JwtTokenProvider {
         }
         this.secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
         this.jwtExpiration = jwtExpiration;
+        
+        log.info("JWT Token Provider initialized - Expiration: {} ms ({} minutes)", 
+                jwtExpiration, jwtExpiration / 60000);
     }
 
     /**
@@ -59,6 +66,9 @@ public class JwtTokenProvider {
     private String createToken(Map<String, Object> claims, String subject) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpiration);
+        
+        log.debug("Creating token - Issued at: {}, Expires at: {}, Expiration duration: {} ms ({} minutes)", 
+                now, expiryDate, jwtExpiration, jwtExpiration / 60000);
 
         return Jwts.builder()
                 .claims(claims)
@@ -126,8 +136,28 @@ public class JwtTokenProvider {
     public boolean validateToken(String token) {
         try {
             Claims claims = getAllClaimsFromToken(token);
-            return !isTokenExpired(claims);
+            boolean expired = isTokenExpired(claims);
+            
+            if (expired) {
+                Date expiration = claims.getExpiration();
+                Date now = new Date();
+                long timeUntilExpiry = expiration.getTime() - now.getTime();
+                log.warn("Token expired. Expiration: {}, Current: {}, Time until expiry (ms): {}", 
+                        expiration, now, timeUntilExpiry);
+            }
+            
+            return !expired;
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            log.warn("Token expired: {}", e.getMessage());
+            return false;
+        } catch (io.jsonwebtoken.security.SignatureException e) {
+            log.warn("Invalid token signature: {}", e.getMessage());
+            return false;
+        } catch (io.jsonwebtoken.MalformedJwtException e) {
+            log.warn("Malformed token: {}", e.getMessage());
+            return false;
         } catch (Exception e) {
+            log.warn("Token validation failed: {} - {}", e.getClass().getSimpleName(), e.getMessage());
             return false;
         }
     }
@@ -137,7 +167,15 @@ public class JwtTokenProvider {
      */
     private boolean isTokenExpired(Claims claims) {
         Date expiration = claims.getExpiration();
-        return expiration.before(new Date());
+        Date now = new Date();
+        boolean expired = expiration.before(now);
+        
+        if (expired) {
+            long timeSinceExpiry = now.getTime() - expiration.getTime();
+            log.debug("Token expired {} ms ago", timeSinceExpiry);
+        }
+        
+        return expired;
     }
 
 }
