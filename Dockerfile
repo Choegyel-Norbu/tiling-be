@@ -45,16 +45,12 @@ RUN npm install --production
 # Create uploads directory
 RUN mkdir -p /app/uploads
 
-# Expose the application port
-EXPOSE 8082
-
-# Set environment variables
+# Set default port (Railway will override with PORT env var)
+ENV PORT=8082
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8082/actuator/health || exit 1
+# Expose the application port
+EXPOSE ${PORT}
 
-# Run the application
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
-
+# Run the application with the PORT from environment
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dserver.port=${PORT} -jar app.jar"]
