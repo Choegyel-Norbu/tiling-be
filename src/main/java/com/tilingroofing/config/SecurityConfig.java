@@ -12,9 +12,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
-import java.util.List;
-
 /**
  * Security configuration for the application.
  * Configures JWT-based authentication and authorization rules.
@@ -87,36 +84,12 @@ public class SecurityConfig {
 
     /**
      * Creates CORS configuration source for Spring Security.
+     * Uses CorsConfig to get CORS configuration directly from Java code.
      */
     @Bean
     public UrlBasedCorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        
-        // Get allowed origins from CorsConfig
-        String allowedOrigins = corsConfig.getAllowedOrigins();
-        List<String> origins = Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .toList();
-        config.setAllowedOrigins(origins);
-        
-        // Set allowed methods
-        String allowedMethods = corsConfig.getAllowedMethods();
-        List<String> methods = Arrays.stream(allowedMethods.split(","))
-                .map(String::trim)
-                .toList();
-        config.setAllowedMethods(methods);
-        
-        // Set allowed headers
-        config.addAllowedHeader("*");
-        
-        // Set credentials
-        config.setAllowCredentials(corsConfig.isAllowCredentials());
-        
-        // Set max age
-        config.setMaxAge(corsConfig.getMaxAge());
-        
-        // Expose headers
-        config.addExposedHeader("Content-Disposition");
+        // Get CORS configuration directly from CorsConfig
+        CorsConfiguration config = corsConfig.getCorsConfiguration();
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", config);
