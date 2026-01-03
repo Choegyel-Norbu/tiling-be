@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.iml
+
+# Build outputs (we build inside Docker)
+target/
+!target/*.jar
+
+# Node modules (we install inside Docker)
+node_modules/
+uploadthing-service/node_modules/
+
+# Test files
+test-uploads/
+uploads/
+
+# Documentation (not needed in container)
+*.md
+!README.md
+
+# Local configuration
+*.local
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
