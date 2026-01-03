@@ -1,14 +1,7 @@
 package com.tilingroofing.config;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
-
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * CORS configuration for the API.
@@ -49,42 +42,8 @@ public class CorsConfig {
         return maxAge;
     }
 
-    @Bean
-    public CorsFilter corsFilter() {
-        CorsConfiguration config = new CorsConfiguration();
-        
-        // Set allowed origins - trim whitespace to handle configuration properly
-        List<String> origins = Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .toList();
-        config.setAllowedOrigins(origins);
-        
-        // Set allowed methods - trim whitespace
-        List<String> methods = Arrays.stream(allowedMethods.split(","))
-                .map(String::trim)
-                .toList();
-        config.setAllowedMethods(methods);
-        
-        // Set allowed headers
-        if ("*".equals(allowedHeaders)) {
-            config.addAllowedHeader("*");
-        } else {
-            config.setAllowedHeaders(Arrays.asList(allowedHeaders.split(",")));
-        }
-        
-        // Set credentials
-        config.setAllowCredentials(allowCredentials);
-        
-        // Set max age
-        config.setMaxAge(maxAge);
-        
-        // Expose headers for clients
-        config.addExposedHeader("Content-Disposition");
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", config);
-        
-        return new CorsFilter(source);
-    }
+    // NOTE: CORS is handled by SecurityConfig.corsConfigurationSource()
+    // This class provides configuration values to SecurityConfig via getters
+    // We don't need a separate CorsFilter bean as it would conflict with Spring Security's CORS handling
 }
 
