@@ -93,5 +93,12 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("status") BookingStatus status,
             Pageable pageable
     );
+
+    /**
+     * Finds a booking by ID with its user relationship eagerly loaded.
+     * Used for operations that need to access user data outside the original transaction.
+     */
+    @Query("SELECT b FROM Booking b LEFT JOIN FETCH b.user WHERE b.id = :id")
+    Optional<Booking> findByIdWithUser(@Param("id") Long id);
 }
 
