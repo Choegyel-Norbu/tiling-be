@@ -155,5 +155,22 @@ public class BookingController {
         BookingResponse booking = bookingService.updateBookingStatus(id, request.getStatus());
         return ResponseEntity.ok(ApiResponse.success(booking, "Status updated successfully"));
     }
+
+    /**
+     * Deletes a booking by its ID (Admin).
+     */
+    @DeleteMapping("/{id}")
+    @Operation(
+            summary = "Delete booking",
+            description = "Deletes a booking by its ID",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<Void>> deleteBooking(
+            @Parameter(description = "Booking ID")
+            @PathVariable Long id
+    ) {
+        bookingService.deleteBooking(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Booking deleted successfully"));
+    }
 }
 

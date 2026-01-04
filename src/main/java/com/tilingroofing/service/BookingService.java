@@ -80,4 +80,11 @@ public interface BookingService {
      * @return BookingResponse with the updated booking
      */
     BookingResponse updateBooking(Long id, UpdateBookingRequest request, List<MultipartFile> files);
+
+    /**
+     * Deletes a booking by its ID.
+     * 
+     * @param id The booking ID
+     */
+    void deleteBooking(Long id);
 }

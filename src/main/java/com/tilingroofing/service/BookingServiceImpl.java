@@ -26,6 +26,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
@@ -118,15 +120,35 @@ public class BookingServiceImpl implements BookingService {
         // Block the booking date to prevent double bookings
         blockBookingDate(preferredDate, booking);
 
-        // Create notification for the new booking
-        String customerName = user.getName() != null ? user.getName() : user.getEmail();
-        String notificationMessage = String.format("You have a new booking: %s - %s, %s", 
+        // Prepare data for post-transaction operations
+        final Booking savedBooking = booking;
+        final String customerName = user.getName() != null ? user.getName() : user.getEmail();
+        final String notificationMessage = String.format("You have a new booking: %s - %s, %s", 
                 bookingRef, customerName, preferredDate);
-        notificationService.createNotification(booking.getId(), notificationMessage);
 
-        // Send email notifications (async)
-        emailService.sendCustomerConfirmation(booking);
-        emailService.sendAdminNotification(booking);
+        // Schedule non-critical operations to run after transaction commits
+        // This prevents blocking the HTTP response and improves performance
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            // Create notification asynchronously (non-blocking)
+                            notificationService.createNotification(savedBooking.getId(), notificationMessage);
+                            
+                            // Send email notifications (already async, but now outside transaction)
+                            emailService.sendCustomerConfirmation(savedBooking);
+                            emailService.sendAdminNotification(savedBooking);
+                            
+                            log.debug("Post-transaction operations completed for booking: {}", bookingRef);
+                        } catch (Exception e) {
+                            // Log but don't fail the booking creation
+                            log.error("Error in post-transaction operations for booking {}: {}", 
+                                    bookingRef, e.getMessage(), e);
+                        }
+                    }
+                }
+        );
 
         return bookingMapper.toBookingResponse(booking);
     }
@@ -459,6 +481,23 @@ public class BookingServiceImpl implements BookingService {
             throw new BusinessException("INVALID_STATUS_TRANSITION", 
                     String.format("Cannot transition from %s to %s", from.getValue(), to.getValue()));
         }
+    }
+
+    @Override
+    @Transactional
+    public void deleteBooking(Long id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", id));
+
+        // Unblock the date if it was blocked by this booking
+        unblockBookingDate(booking.getPreferredDate(), booking.getId());
+
+        // Delete associated files
+        fileStorageService.deleteBookingFiles(booking.getBookingRef());
+
+        // Delete the booking
+        bookingRepository.delete(booking);
+        log.info("Deleted booking: {}", booking.getBookingRef());
     }
 }
 
