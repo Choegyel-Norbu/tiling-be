@@ -133,17 +133,42 @@ public class BookingServiceImpl implements BookingService {
                     @Override
                     public void afterCommit() {
                         try {
-                            // Create notification asynchronously (non-blocking)
-                            notificationService.createNotification(savedBooking.getId(), notificationMessage);
+                            log.debug("Starting post-transaction operations for booking: {}", bookingRef);
+                            
+                            // Create notification (idempotent - won't fail if already exists)
+                            try {
+                                notificationService.createNotification(savedBooking.getId(), notificationMessage);
+                                log.info("Successfully created notification for booking: {}", bookingRef);
+                            } catch (IllegalStateException e) {
+                                // Notification already exists - this is okay, just log it
+                                log.warn("Notification already exists for booking {}: {}", bookingRef, e.getMessage());
+                            } catch (Exception e) {
+                                // Log notification creation failure but continue with other operations
+                                log.error("Failed to create notification for booking {}: {}", 
+                                        bookingRef, e.getMessage(), e);
+                            }
                             
                             // Send email notifications (already async, but now outside transaction)
-                            emailService.sendCustomerConfirmation(savedBooking);
-                            emailService.sendAdminNotification(savedBooking);
+                            try {
+                                emailService.sendCustomerConfirmation(savedBooking);
+                                log.debug("Sent customer confirmation email for booking: {}", bookingRef);
+                            } catch (Exception e) {
+                                log.error("Failed to send customer confirmation email for booking {}: {}", 
+                                        bookingRef, e.getMessage(), e);
+                            }
                             
-                            log.debug("Post-transaction operations completed for booking: {}", bookingRef);
+                            try {
+                                emailService.sendAdminNotification(savedBooking);
+                                log.debug("Sent admin notification email for booking: {}", bookingRef);
+                            } catch (Exception e) {
+                                log.error("Failed to send admin notification email for booking {}: {}", 
+                                        bookingRef, e.getMessage(), e);
+                            }
+                            
+                            log.info("Post-transaction operations completed for booking: {}", bookingRef);
                         } catch (Exception e) {
-                            // Log but don't fail the booking creation
-                            log.error("Error in post-transaction operations for booking {}: {}", 
+                            // Catch-all for any unexpected errors
+                            log.error("Unexpected error in post-transaction operations for booking {}: {}", 
                                     bookingRef, e.getMessage(), e);
                         }
                     }

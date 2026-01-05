@@ -15,9 +15,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -59,27 +61,56 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public NotificationResponse createNotification(Long bookingId, String message) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
-
-        // Check if notification already exists for this booking
-        if (notificationRepository.findByBookingId(bookingId).isPresent()) {
-            log.warn("Notification already exists for booking ID: {}", bookingId);
-            throw new IllegalStateException("Notification already exists for this booking");
+        log.debug("Creating notification for booking ID: {} with message: {}", bookingId, message);
+        
+        // Check if notification already exists for this booking (idempotent operation)
+        Optional<Notification> existingNotification = notificationRepository.findByBookingId(bookingId);
+        if (existingNotification.isPresent()) {
+            Notification notification = existingNotification.get();
+            log.info("Notification already exists for booking ID: {}, returning existing notification", bookingId);
+            triggerLazyLoading(notification);
+            return toNotificationResponse(notification);
         }
 
+        // Fetch booking - ensure it exists
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> {
+                    log.error("Booking not found for ID: {} when creating notification", bookingId);
+                    return new ResourceNotFoundException("Booking", "id", bookingId);
+                });
+
+        log.debug("Found booking: {} for notification creation", booking.getBookingRef());
+
+        // Create new notification
         Notification notification = Notification.builder()
                 .booking(booking)
                 .message(message)
                 .isRead(false)
                 .build();
 
-        notification = notificationRepository.save(notification);
-        log.info("Created notification for booking: {}", booking.getBookingRef());
-
-        return toNotificationResponse(notification);
+        try {
+            // Use saveAndFlush to ensure ID is generated immediately
+            notification = notificationRepository.saveAndFlush(notification);
+            
+            // Verify ID was generated
+            if (notification.getId() == null) {
+                log.error("Notification ID is null after save for booking ID: {}", bookingId);
+                throw new RuntimeException("Failed to generate notification ID");
+            }
+            
+            log.info("Successfully created notification (ID: {}) for booking: {}", 
+                    notification.getId(), booking.getBookingRef());
+            
+            // Trigger lazy loading to ensure all relationships are loaded
+            triggerLazyLoading(notification);
+            
+            return toNotificationResponse(notification);
+        } catch (Exception e) {
+            log.error("Failed to save notification for booking ID {}: {}", bookingId, e.getMessage(), e);
+            throw new RuntimeException("Failed to create notification: " + e.getMessage(), e);
+        }
     }
 
     @Override

@@ -26,10 +26,11 @@ public class JwtTokenProvider {
 
     private final SecretKey secretKey;
     private final long jwtExpiration;
+    private final boolean hasExpiration;
 
     public JwtTokenProvider(
             @Value("${app.jwt.secret}") String jwtSecret,
-            @Value("${app.jwt.expiration:3600000}") long jwtExpiration
+            @Value("${app.jwt.expiration:0}") long jwtExpiration
     ) {
         // Validate secret key length (minimum 256 bits = 32 characters)
         if (jwtSecret == null || jwtSecret.length() < 32) {
@@ -40,9 +41,14 @@ public class JwtTokenProvider {
         }
         this.secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
         this.jwtExpiration = jwtExpiration;
+        this.hasExpiration = jwtExpiration > 0;
         
-        log.info("JWT Token Provider initialized - Expiration: {} ms ({} minutes)", 
-                jwtExpiration, jwtExpiration / 60000);
+        if (hasExpiration) {
+            log.info("JWT Token Provider initialized - Expiration: {} ms ({} minutes)", 
+                    jwtExpiration, jwtExpiration / 60000);
+        } else {
+            log.info("JWT Token Provider initialized - No expiration (tokens never expire)");
+        }
     }
 
     /**
@@ -62,21 +68,26 @@ public class JwtTokenProvider {
 
     /**
      * Creates a JWT token with claims and subject.
+     * If expiration is set to 0 or negative, token will not have an expiration claim.
      */
     private String createToken(Map<String, Object> claims, String subject) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + jwtExpiration);
         
-        log.debug("Creating token - Issued at: {}, Expires at: {}, Expiration duration: {} ms ({} minutes)", 
-                now, expiryDate, jwtExpiration, jwtExpiration / 60000);
-
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .claims(claims)
                 .subject(subject)
-                .issuedAt(now)
-                .expiration(expiryDate)
-                .signWith(secretKey)
-                .compact();
+                .issuedAt(now);
+        
+        if (hasExpiration) {
+            Date expiryDate = new Date(now.getTime() + jwtExpiration);
+            builder.expiration(expiryDate);
+            log.debug("Creating token - Issued at: {}, Expires at: {}, Expiration duration: {} ms ({} minutes)", 
+                    now, expiryDate, jwtExpiration, jwtExpiration / 60000);
+        } else {
+            log.debug("Creating token - Issued at: {}, No expiration (token never expires)", now);
+        }
+
+        return builder.signWith(secretKey).compact();
     }
 
     /**
@@ -102,9 +113,16 @@ public class JwtTokenProvider {
 
     /**
      * Extracts the expiration date from a token.
+     * Returns null if the token has no expiration claim.
      */
     public Date getExpirationDateFromToken(String token) {
-        return getClaimFromToken(token, Claims::getExpiration);
+        try {
+            Claims claims = getAllClaimsFromToken(token);
+            return claims.getExpiration();
+        } catch (Exception e) {
+            log.debug("Token has no expiration claim or error extracting expiration: {}", e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -128,7 +146,7 @@ public class JwtTokenProvider {
 
     /**
      * Validates a token.
-     * Checks if token is expired and signature is valid.
+     * Checks if token is expired (if expiration is enabled) and signature is valid.
      *
      * @param token JWT token to validate
      * @return true if token is valid, false otherwise
@@ -136,19 +154,31 @@ public class JwtTokenProvider {
     public boolean validateToken(String token) {
         try {
             Claims claims = getAllClaimsFromToken(token);
-            boolean expired = isTokenExpired(claims);
             
-            if (expired) {
-                Date expiration = claims.getExpiration();
-                Date now = new Date();
-                long timeUntilExpiry = expiration.getTime() - now.getTime();
-                log.warn("Token expired. Expiration: {}, Current: {}, Time until expiry (ms): {}", 
-                        expiration, now, timeUntilExpiry);
+            // Only check expiration if expiration is enabled
+            if (hasExpiration) {
+                boolean expired = isTokenExpired(claims);
+                
+                if (expired) {
+                    Date expiration = claims.getExpiration();
+                    Date now = new Date();
+                    long timeUntilExpiry = expiration.getTime() - now.getTime();
+                    log.warn("Token expired. Expiration: {}, Current: {}, Time until expiry (ms): {}", 
+                            expiration, now, timeUntilExpiry);
+                    return false;
+                }
+            } else {
+                log.debug("Token validation - expiration check skipped (tokens have no expiration)");
             }
             
-            return !expired;
+            return true;
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            log.warn("Token expired: {}", e.getMessage());
+            // This exception should not occur if expiration is disabled, but handle it gracefully
+            if (hasExpiration) {
+                log.warn("Token expired: {}", e.getMessage());
+            } else {
+                log.warn("Unexpected expiration exception for non-expiring token: {}", e.getMessage());
+            }
             return false;
         } catch (io.jsonwebtoken.security.SignatureException e) {
             log.warn("Invalid token signature: {}", e.getMessage());
@@ -164,9 +194,15 @@ public class JwtTokenProvider {
 
     /**
      * Checks if a token is expired.
+     * Returns false if token has no expiration claim.
      */
     private boolean isTokenExpired(Claims claims) {
         Date expiration = claims.getExpiration();
+        if (expiration == null) {
+            log.debug("Token has no expiration claim - considered not expired");
+            return false;
+        }
+        
         Date now = new Date();
         boolean expired = expiration.before(now);
         
